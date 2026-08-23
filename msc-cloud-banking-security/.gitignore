@@ -1,0 +1,27 @@
+# AWS credentials
+.aws/
+credentials
+
+# Environment/secrets
+.env
+.env.*
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system
+Thumbs.db
+.DS_Store

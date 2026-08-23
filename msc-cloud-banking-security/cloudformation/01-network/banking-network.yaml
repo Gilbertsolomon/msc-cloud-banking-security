@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  MSc Cloud and Network Security dissertation prototype.
+  Network foundation for a multi-layer cloud banking
+  defence architecture.
+
+Resources:
+  BankingVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MSc-Banking-VPC
+        - Key: Project
+          Value: MSc-Banking-Security
+        - Key: Environment
+          Value: Research
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BankingVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: MSc-Public-Subnet
+        - Key: Project
+          Value: MSc-Banking-Security
+        - Key: Environment
+          Value: Research
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref BankingVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: MSc-Private-Subnet
+        - Key: Project
+          Value: MSc-Banking-Security
+        - Key: Environment
+          Value: Research
+
+Outputs:
+  VPCId:
+    Description: Prototype banking VPC ID
+    Value: !Ref BankingVPC
+
+  PublicSubnetId:
+    Description: Prototype public subnet ID
+    Value: !Ref PublicSubnet
+
+  PrivateSubnetId:
+    Description: Prototype private subnet ID
+    Value: !Ref PrivateSubnet
