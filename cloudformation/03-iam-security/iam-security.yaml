@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'MSc Cloud and Network Security dissertation prototype. Least-privilege IAM controls for the multi-layer cloud-banking defence architecture.'
+
+Resources:
+
+  BankingAuditorPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: MSc-Banking-Auditor-Policy
+      Description: 'Least-privilege policy allowing read-only inspection of selected banking network and CloudFormation resources.'
+
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+        - Sid: AllowNetworkInspection
+          Effect: Allow
+          Action:
+          - ec2:DescribeVpcs
+          - ec2:DescribeSubnets
+          - ec2:DescribeRouteTables
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeInternetGateways
+          Resource: '*'
+
+        - Sid: AllowCloudFormationInspection
+          Effect: Allow
+          Action:
+          - cloudformation:DescribeStacks
+          - cloudformation:DescribeStackResources
+          - cloudformation:ListStacks
+          Resource: '*'
+
+  BankingAuditorUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: msc-banking-auditor
+
+      ManagedPolicyArns:
+      - !Ref BankingAuditorPolicy
+
+      Tags:
+      - Key: Project
+        Value: MSc-Banking-Security
+
+      - Key: Environment
+        Value: Research
+
+      - Key: Purpose
+        Value: LeastPrivilegeValidation
+
+Outputs:
+
+  AuditorUserName:
+    Description: Temporary least-privilege IAM test identity
+    Value: !Ref BankingAuditorUser
+
+  AuditorPolicyArn:
+    Description: ARN of the least-privilege auditor policy
+    Value: !Ref BankingAuditorPolicy
