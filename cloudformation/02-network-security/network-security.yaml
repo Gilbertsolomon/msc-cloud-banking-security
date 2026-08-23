@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+	MSc Cloud and Network Security dissertation prototype.
+	Network security controls for the multi-layer cloud-banking
+	defence architecture.
+
+Parameters:
+	VpcId:
+		Type: AWS::EC2::VPC::Id
+		Description: Existing MSc banking VPC
+
+	PublicSubnetId:
+		Type: AWS::EC2::Subnet::Id
+		Description: Existing public subnet
+
+	PrivateSubnetId:
+		Type: AWS::EC2::Subnet::Id
+		Description: Existing private subnet
+
+Resources:
+	BankingInternetGateway:
+		Type: AWS::EC2::InternetGateway
+		Properties:
+			Tags:
+				- Key: Name
+					Value: MSc-Banking-IGW
+				- Key: Project
+					Value: MSc-Banking-Security
+				- Key: Environment
+					Value: Research
+
+	InternetGatewayAttachment:
+		Type: AWS::EC2::VPCGatewayAttachment
+		Properties:
+			VpcId: !Ref VpcId
+			InternetGatewayId: !Ref BankingInternetGateway
+
+	PublicRouteTable:
+		Type: AWS::EC2::RouteTable
+		Properties:
+			VpcId: !Ref VpcId
+			Tags:
+				- Key: Name
+					Value: MSc-Public-RouteTable
+				- Key: Project
+					Value: MSc-Banking-Security
+				- Key: Environment
+					Value: Research
+
+	PublicInternetRoute:
+		Type: AWS::EC2::Route
+		DependsOn: InternetGatewayAttachment
+		Properties:
+			RouteTableId: !Ref PublicRouteTable
+			DestinationCidrBlock: 0.0.0.0/0
+			GatewayId: !Ref BankingInternetGateway
+
+	PublicSubnetRouteTableAssociation:
+		Type: AWS::EC2::SubnetRouteTableAssociation
+		Properties:
+			SubnetId: !Ref PublicSubnetId
+			RouteTableId: !Ref PublicRouteTable
+
+	PrivateRouteTable:
+		Type: AWS::EC2::RouteTable
+		Properties:
+			VpcId: !Ref VpcId
+			Tags:
+				- Key: Name
+					Value: MSc-Private-RouteTable
+				- Key: Project
+					Value: MSc-Banking-Security
+				- Key: Environment
+					Value: Research
+
+	PrivateSubnetRouteTableAssociation:
+		Type: AWS::EC2::SubnetRouteTableAssociation
+		Properties:
+			SubnetId: !Ref PrivateSubnetId
+			RouteTableId: !Ref PrivateRouteTable
+
+	PublicWebSecurityGroup:
+		Type: AWS::EC2::SecurityGroup
+		Properties:
+			GroupDescription: Controlled web access for public-facing prototype resources
+			VpcId: !Ref VpcId
+			SecurityGroupIngress:
+				- IpProtocol: tcp
+					FromPort: 80
+					ToPort: 80
+					CidrIp: 0.0.0.0/0
+					Description: Allow HTTP traffic
+				- IpProtocol: tcp
+					FromPort: 443
+					ToPort: 443
+					CidrIp: 0.0.0.0/0
+					Description: Allow HTTPS traffic
+			Tags:
+				- Key: Name
+					Value: MSc-Public-Web-SG
+				- Key: Project
+					Value: MSc-Banking-Security
+				- Key: Environment
+					Value: Research
+
+	PrivateApplicationSecurityGroup:
+		Type: AWS::EC2::SecurityGroup
+		Properties:
+			GroupDescription: Restricted access to private banking application resources
+			VpcId: !Ref VpcId
+			SecurityGroupIngress:
+				- IpProtocol: tcp
+					FromPort: 8080
+					ToPort: 8080
+					SourceSecurityGroupId: !Ref PublicWebSecurityGroup
+					Description: Allow application traffic only from public web tier
+			Tags:
+				- Key: Name
+					Value: MSc-Private-App-SG
+				- Key: Project
+					Value: MSc-Banking-Security
+				- Key: Environment
+					Value: Research
+
+Outputs:
+	InternetGatewayId:
+		Description: Internet Gateway attached to the banking VPC
+		Value: !Ref BankingInternetGateway
+
+	PublicRouteTableId:
+		Description: Public subnet route table
+		Value: !Ref PublicRouteTable
+
+	PrivateRouteTableId:
+		Description: Private subnet isolated route table
+		Value: !Ref PrivateRouteTable
+
+	PublicWebSecurityGroupId:
+		Description: Public web-tier security group
+		Value: !Ref PublicWebSecurityGroup
+
+	PrivateApplicationSecurityGroupId:
+		Description: Private application-tier security group
+		Value: !Ref PrivateApplicationSecurityGroup
