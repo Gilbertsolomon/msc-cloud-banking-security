@@ -39,3 +39,15 @@ The implementation is validated using:
 - Internet Gateway attachment
 - Security-group rules
 - The VPC resource map
+
+## Validation Results
+
+The deployed network security controls were validated against three key configuration requirements:
+
+1. **Public Subnet Routing:** The public subnet is associated with an explicit default route (`0.0.0.0/0`) through the attached Internet Gateway, enabling controlled Internet connectivity for public-facing resources.
+
+2. **Private Subnet Isolation:** The private subnet has no direct route to the Internet Gateway, ensuring that resources deployed within the private network layer are not directly exposed to the public Internet.
+
+3. **Private Application Access Control:** The private application security group permits application traffic on TCP port `8080` only from the approved public web security group, preventing direct public access to the private application layer.
+
+Detailed validation procedures, observed results, and supporting evidence for these security controls are maintained under `tests/network/`.
