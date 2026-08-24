@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  MSc Cloud and Network Security dissertation prototype. Secure serverless banking application workload using AWS Lambda within the existing private network security boundary.
+
+Parameters:
+
+  PrivateSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Existing private banking subnet
+
+  PrivateApplicationSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Existing private banking application security group
+
+Resources:
+
+  BankingLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MSc-Banking-Lambda-Execution-Role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+      Tags:
+      - Key: Project
+        Value: MSc-Banking-Security
+      - Key: Environment
+        Value: Research
+
+  BankingPrototypeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MSc-Banking-Prototype-Function
+
+      Description: >
+        Synthetic banking application workload used to validate the secure compute layer of the MSc dissertation prototype.
+
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt BankingLambdaExecutionRole.Arn
+      MemorySize: 128
+      Timeout: 10
+
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref PrivateApplicationSecurityGroupId
+        SubnetIds:
+        - !Ref PrivateSubnetId
+
+      Environment:
+        Variables:
+          PROJECT: MSc-Banking-Security
+          DATA_CLASSIFICATION: Synthetic-Only
+
+      Code:
+        ZipFile: |
+          import json
+          import os
+
+          def lambda_handler(event, context):
+              transaction_reference = event.get(
+                  "transaction_reference",
+                  "TEST-TRANSACTION"
+              )
+
+              response = {
+                  "status": "processed",
+                  "transaction_reference": transaction_reference,
+                  "environment": "research",
+                  "data_classification": "synthetic-only",
+                  "message": "Synthetic banking request processed successfully"
+              }
+
+              print(json.dumps({
+                  "event_type": "synthetic_banking_request",
+                  "transaction_reference": transaction_reference,
+                  "status": "processed"
+              }))
+
+              return {
+                  "statusCode": 200,
+                  "body": json.dumps(response)
+              }
+
+      Tags:
+      - Key: Name
+        Value: MSc-Banking-Prototype-Function
+      - Key: Project
+        Value: MSc-Banking-Security
+      - Key: Environment
+        Value: Research
+      - Key: DataClassification
+        Value: Synthetic-Only
+
+Outputs:
+
+  BankingFunctionName:
+    Description: Secure serverless banking prototype function
+    Value: !Ref BankingPrototypeFunction
+
+  BankingFunctionArn:
+    Description: ARN of the prototype banking Lambda function
+    Value: !GetAtt BankingPrototypeFunction.Arn
+
+  LambdaExecutionRoleArn:
+    Description: Lambda execution role ARN
+    Value: !GetAtt BankingLambdaExecutionRole.Arn
