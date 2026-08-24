@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'MSc Cloud and Network Security dissertation prototype. Secure Amazon S3 storage layer for simulated banking data, implementing encryption, versioning, public-access prevention and transport-security enforcement.'
+
+Resources:
+
+  SecureBankingDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+
+      VersioningConfiguration:
+        Status: Enabled
+
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+
+      OwnershipControls:
+        Rules:
+        - ObjectOwnership: BucketOwnerEnforced
+
+      Tags:
+      - Key: Name
+        Value: MSc-Secure-Banking-Data
+
+      - Key: Project
+        Value: MSc-Banking-Security
+
+      - Key: Environment
+        Value: Research
+
+      - Key: DataClassification
+        Value: Simulated-Confidential
+
+  SecureTransportBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SecureBankingDataBucket
+
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+        - Sid: DenyInsecureTransport
+          Effect: Deny
+          Principal: '*'
+          Action: 's3:*'
+
+          Resource:
+          - !GetAtt SecureBankingDataBucket.Arn
+          - !Sub '${SecureBankingDataBucket.Arn}/*'
+
+          Condition:
+            Bool:
+              aws:SecureTransport: false
+
+Outputs:
+
+  SecureBucketName:
+    Description: Secure S3 bucket for simulated banking data
+    Value: !Ref SecureBankingDataBucket
+
+  SecureBucketArn:
+    Description: ARN of secure banking-data bucket
+    Value: !GetAtt SecureBankingDataBucket.Arn
