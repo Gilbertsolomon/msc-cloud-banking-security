@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  MSc Cloud and Network Security dissertation prototype. Automated incident-response workflow using Amazon EventBridge and AWS Lambda to perform a safe containment action against the existing banking VPC.
+
+Parameters:
+
+  BankingVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Existing MSc banking VPC to use for controlled response validation
+
+Resources:
+
+  IncidentResponseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MSc-Incident-Response-Lambda-Role
+
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+      Policies:
+      - PolicyName: ControlledVpcContainment
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: AllowTaggingOnlyResearchVpc
+            Effect: Allow
+            Action:
+            - ec2:CreateTags
+            - ec2:DeleteTags
+            Resource: !Sub
+              - 'arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:vpc/${VpcId}'
+              - VpcId: !Ref BankingVpcId
+
+      Tags:
+      - Key: Project
+        Value: MSc-Banking-Security
+      - Key: Environment
+        Value: Research
+
+  IncidentResponseFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: MSc-Banking-Incident-Response
+
+      Description: >
+        Performs a controlled non-destructive containment response when the dissertation prototype receives a synthetic security event.
+
+      Runtime: python3.12
+      Handler: index.lambda_handler
+      Role: !GetAtt IncidentResponseRole.Arn
+      MemorySize: 128
+      Timeout: 10
+
+      Environment:
+        Variables:
+          BANKING_VPC_ID: !Ref BankingVpcId
+
+      Code:
+        ZipFile: |
+          import json
+          import os
+          import boto3
+
+          ec2 = boto3.client("ec2")
+
+          def lambda_handler(event, context):
+              vpc_id = os.environ["BANKING_VPC_ID"]
+
+              detail = event.get("detail", {})
+              event_id = detail.get("event_id", "UNKNOWN")
+              severity = detail.get("severity", "UNKNOWN")
+
+              ec2.create_tags(
+                  Resources=[vpc_id],
+                  Tags=[
+                      {
+                          "Key": "IncidentStatus",
+                          "Value": "Quarantined-Test"
+                      },
+                      {
+                          "Key": "IncidentSource",
+                          "Value": "MSc-Synthetic-Security-Event"
+                      }
+                  ]
+              )
+
+              result = {
+                  "response": "containment-tag-applied",
+                  "resource": vpc_id,
+                  "event_id": event_id,
+                  "severity": severity
+              }
+
+              print(json.dumps(result))
+
+              return result
+
+      Tags:
+      - Key: Name
+        Value: MSc-Banking-Incident-Response
+      - Key: Project
+        Value: MSc-Banking-Security
+      - Key: Environment
+        Value: Research
+
+  SecurityEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: MSc-Banking-Security-Event-Rule
+
+      Description: >
+        Matches controlled MSc banking security events and invokes the automated incident-response Lambda function.
+
+      State: ENABLED
+
+      EventPattern:
+        source:
+        - msc.banking.security
+        detail-type:
+        - Banking Security Alert
+        detail:
+          severity:
+          - High
+
+      Targets:
+      - Arn: !GetAtt IncidentResponseFunction.Arn
+        Id: BankingIncidentResponseTarget
+
+  PermissionForEventBridgeToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IncidentResponseFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SecurityEventRule.Arn
+
+Outputs:
+
+  IncidentResponseFunctionName:
+    Description: Incident-response Lambda function
+    Value: !Ref IncidentResponseFunction
+
+  SecurityEventRuleName:
+    Description: EventBridge rule matching high-severity banking security events
+    Value: !Ref SecurityEventRule
+
+  ProtectedVpcId:
+    Description: Existing VPC used in controlled response validation
+    Value: !Ref BankingVpcId
